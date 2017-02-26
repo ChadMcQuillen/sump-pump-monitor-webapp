@@ -11,7 +11,7 @@
 <body>
     <div id="amazon-root"></div>
     <br/>
-    <h2>Sump Pump Water Level</h2>
+    <div id="chart"></div>
     <a href="#" id="login">Login</a>
 
     <script type="text/javascript">
@@ -40,7 +40,7 @@
             graphWidth = viewPortWidth;
         }
 
-        var margin = {top: 20, right: 40, bottom: 30, left: 50},
+        var margin = {top: 40, right: 40, bottom: 30, left: 50},
             width = graphWidth - margin.left - margin.right,
             height = (graphWidth/2) - margin.top - margin.bottom;
 
@@ -63,7 +63,7 @@
             .x(function(d) { return x(d.date); })
             .y(function(d) { return y(d.height); });
 
-        var svg = d3.select("body").append("svg")
+        var svg = d3.select("#chart").append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
@@ -97,6 +97,14 @@
             .attr("dy", ".71em")
             .style("text-anchor", "middle")
             .text("Height (cm)");
+
+        svg.append("text")
+            .attr("x", (width / 2))
+            .attr("y", 0 - (margin.top / 2))
+            .attr("text-anchor", "middle")
+            .style("font-size", "20px")
+            .style("fill", "white")
+            .text("Sump Pump Water Level");
 
         function amazonAuth(response) {
             if (response.error) {
