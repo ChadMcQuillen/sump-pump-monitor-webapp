@@ -2,8 +2,170 @@
 <html lang="en">
 <head>
     <title>McQuillen Home Sump Pump Monitor</title>
+    <meta name="viewport" content="initial-scale=1" />
+    <link rel="stylesheet" type="text/css" href="css/sump-pump.css" />
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.16.0.min.js"></script>
+    <script src="https://d3js.org/d3.v3.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.7.0/moment.min.js"></script>
 </head>
 <body>
-    Hello World!
+    <div id="amazon-root"></div>
+    <br/>
+    <h2>Sump Pump Water Level</h2>
+    <a href="#" id="login">Login</a>
+
+    <script type="text/javascript">
+
+        window.onAmazonLoginReady = function() {
+            amazon.Login.setClientId('amzn1.application-oa2-client.18ad8e0cb417406aa6394eeed354782f');
+        };
+
+        (function(d) {
+            var a = d.createElement('script'); a.type = 'text/javascript';
+            a.async = true; a.id = 'amazon-login-sdk';
+            a.src = 'https://api-cdn.amazon.com/sdk/login1.js';
+            d.getElementById('amazon-root').appendChild(a);
+        })(document);
+
+        var roleArn = 'arn:aws:iam::217282925988:role/sump-pump-application';
+
+        // determine view port width
+        var viewPortWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+
+        // default graph width is 960
+        var graphWidth = 960;
+
+        if (viewPortWidth < graphWidth) {
+            // reduce graph width and limit data based on view port size
+            graphWidth = viewPortWidth;
+        }
+
+        var margin = {top: 20, right: 40, bottom: 30, left: 50},
+            width = graphWidth - margin.left - margin.right,
+            height = (graphWidth/2) - margin.top - margin.bottom;
+
+        // define scale for X-axis (Time) which covers the entire width of the graph
+        var x = d3.time.scale()
+            .range([0, width]);
+
+        var y = d3.scale.linear()
+            .range([height, 0]);
+
+        var xAxis = d3.svg.axis()
+            .scale(x)
+            .orient("bottom");
+
+        var yAxis = d3.svg.axis()
+            .scale(y)
+            .orient("left");
+
+        var lineHeight = d3.svg.line()
+            .x(function(d) { return x(d.date); })
+            .y(function(d) { return y(d.height); });
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        // set the x axis to cover a 24 hour timespan
+        var now = moment();
+        var timespan = [];
+        for (i = 0; i < 24 * 60; i++) {
+            timespan.push(moment(now));
+            now.subtract(1, 'minutes');
+        }
+        x.domain(d3.extent(timespan));
+
+        // water level is bounded between 0 and 61 cm
+        y.domain([0, 61]);
+
+        // add the axes to the graph
+
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(xAxis);
+
+        svg.append("g")
+            .attr("class", "y axis yAxis")
+            .call(yAxis)
+            .append("text")
+            .attr("y", -15)
+            .attr("x", -15)
+            .attr("dy", ".71em")
+            .style("text-anchor", "middle")
+            .text("Height (cm)");
+
+        function amazonAuth(response) {
+            if (response.error) {
+                console.log(response.error);
+                return;
+            }
+
+            AWS.config.credentials = new AWS.WebIdentityCredentials({
+                RoleArn: roleArn,
+                ProviderId: 'www.amazon.com',
+                WebIdentityToken: response.access_token
+            });
+
+            // AWS region that we're working in
+            AWS.config.region = 'us-east-1';
+
+            amazon.Login.retrieveProfile(response.access_token, function(response) {
+
+                docClient = new AWS.DynamoDB.DocumentClient();
+
+                var timestampQuery = moment().subtract(24, 'hours').toISOString();
+
+                var queryParams = {
+                    TableName : 'sump-pump-water-level',
+                    ProjectionExpression : '#ts, water_level',
+                    KeyConditionExpression : "#sp = :sp and #ts > :ts",
+                    ExpressionAttributeNames : {
+                        '#sp' : 'sump-pump',
+                        '#ts' : 'timestamp'
+                    },
+                    ExpressionAttributeValues : {
+                        ':sp' : 'primary',
+                        ':ts' : timestampQuery
+                    }
+                };
+
+                docClient.query(queryParams, function(err, data) {
+                    if (err) {
+                        console.log(JSON.stringify(err, null, 2));
+                    } else {
+                        drawChart(data);
+                    }
+                });
+            });
+        }
+
+        function drawChart(data) {
+
+            // for each record of data received, parse out the values
+            data.Items.forEach(function(d) {
+                d.date = moment(d.timestamp);
+                d.height = parseFloat(d.water_level);
+            });
+
+            // refresh y-axis with the values we parsed out above
+            x.domain(d3.extent(data.Items, function(d) { return d.date; }));
+
+            // add water level to graph
+
+            svg.append("path")
+                .datum(data.Items)
+                .attr("class", "lineHeight")
+                .attr("d", lineHeight);
+        }
+
+        document.getElementById('login').onclick = function() {
+            options = { scope : 'profile' };
+            amazon.Login.authorize(options, amazonAuth);
+        };
+    </script>
 </body>
 </html>
