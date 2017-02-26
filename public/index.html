@@ -12,7 +12,6 @@
     <div id="amazon-root"></div>
     <br/>
     <div id="chart"></div>
-    <a href="#" id="login">Login</a>
 
     <script type="text/javascript">
 
@@ -26,6 +25,11 @@
             a.src = 'https://api-cdn.amazon.com/sdk/login1.js';
             d.getElementById('amazon-root').appendChild(a);
         })(document);
+
+        window.onload = function() {
+            options = { scope : 'profile' };
+            amazon.Login.authorize(options, amazonAuth);
+        };
 
         var roleArn = 'arn:aws:iam::217282925988:role/sump-pump-application';
 
@@ -169,11 +173,6 @@
                 .attr("class", "lineHeight")
                 .attr("d", lineHeight);
         }
-
-        document.getElementById('login').onclick = function() {
-            options = { scope : 'profile' };
-            amazon.Login.authorize(options, amazonAuth);
-        };
     </script>
 </body>
 </html>
