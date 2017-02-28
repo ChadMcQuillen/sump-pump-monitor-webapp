@@ -133,11 +133,12 @@
 
                 var queryParams = {
                     TableName : 'sump-pump-water-level',
-                    ProjectionExpression : '#ts, water_level',
+                    ProjectionExpression : '#ts, #wl',
                     KeyConditionExpression : "#sp = :sp and #ts > :ts",
                     ExpressionAttributeNames : {
                         '#sp' : 'sump-pump',
-                        '#ts' : 'timestamp'
+                        '#ts' : 'timestamp',
+                        '#wl' : 'water-level'
                     },
                     ExpressionAttributeValues : {
                         ':sp' : 'primary',
@@ -160,7 +161,7 @@
             // for each record of data received, parse out the values
             data.Items.forEach(function(d) {
                 d.date = moment(d.timestamp);
-                d.height = parseFloat(d.water_level);
+                d.height = parseFloat(d['water-level']);
             });
 
             // refresh y-axis with the values we parsed out above
