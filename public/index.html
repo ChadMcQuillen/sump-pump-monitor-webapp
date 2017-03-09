@@ -132,7 +132,7 @@
                 var timestampQuery = moment().subtract(24, 'hours').toISOString();
 
                 var queryParams = {
-                    TableName : 'sump-pump-water-level',
+                    TableName : 'sump-pump-water-level-prod',
                     ProjectionExpression : '#ts, #wl',
                     KeyConditionExpression : "#sp = :sp and #ts > :ts",
                     ExpressionAttributeNames : {
